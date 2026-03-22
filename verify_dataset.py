@@ -1,5 +1,5 @@
 import pandas as pd
-df = pd.read_csv("dataset/gypti_bank_synthetic_data.csv")
+df = pd.read_csv("dataset/barclays_bank_synthetic_data.csv")
 print("Shape:", df.shape)
 print("Nulls:", df.isna().sum().sum())
 print("Default by segment:\n", df.groupby("customer_segment")["default_flag"].sum())

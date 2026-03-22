@@ -309,7 +309,7 @@ def generate_synthetic_data(num_samples=100000, output_dir="dataset"):
     df.fillna(0, inplace=True)
     
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, "gypti_bank_synthetic_data.csv")
+    out_path = os.path.join(output_dir, "barclays_bank_synthetic_data.csv")
     df.to_csv(out_path, index=False)
     print(f"Data generation complete! Saved to {out_path}")
     print(df["customer_segment"].value_counts())
