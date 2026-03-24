@@ -1,65 +1,60 @@
-# ML Model Architecture Plan (Hackathon Edition)
+# Anvaya Phase-2: Single-Model PD Pipeline Architecture
 
-This document outlines the lean, high-impact machine learning architecture designed to be built in a compressed hackathon timeframe. It focuses on taking the pristine synthetic dataset (`dataset/barclays_bank_synthetic_data.csv`) and routing it through the pre-delinquency pipeline described in the PRD, specifically focusing on the **XGBoost** and **LightGBM** components.
+This document serves as the authoritative specification for the Anvaya Phase-2 Credit Risk Model (PD Pipeline). 
 
-## 1. Hackathon System Flow
+## 1. Input Data and Features
+*   **Base Dataset**: Credit-risk dataset with binary `default_flag` (0/1).
+*   **Feature Set**: Exactly 13 agreed features (F1–F13) are used as predictors.
+*   **Constraint**: No other variables are permitted as direct model inputs.
 
-For a hackathon, we bypass heavy infrastructural components (like streaming Kafka or distributed Dask) and emulate the stream using a fast batch-inference FastAPI wrapper to deliver the "wow" factor to the judges.
+## 2. Data Cleaning
+*   **Missing Values**: Handled with documented rules (e.g., median/mode imputation or bin-specific defaults; no silent dropping).
+*   **Outliers**: Capping/Winsorization is applied where necessary and documented.
+*   **Format**: All 13 features are numericized and validated for the binning stage.
 
-```mermaid
-graph TD
-    A[barclays_bank_synthetic_data.csv] --> B(Pandas/Polars Preprocessing)
-    B --> C{Feature Engineering}
-    C --> D[Weight of Evidence 'WoE' Encoding]
-    D --> E[Information Value 'IV' Selection]
-    E --> F[XGBoost Fast Path<br/>Top 4 Features]
-    E --> G[LightGBM Deep Path<br/>13 Features]
-    F --> H{Ensemble Scoring}
-    G --> H
-    H --> I[SHAP Value Explainer]
-    I --> J[FastAPI / Streamlit Dashboard]
-```
+## 3. Binning and Weight of Evidence (WoE)
+*   **Supervised Binning**: Features are grouped into risk-meaningful buckets with monotone risk trends where logically expected.
+*   **Minimum Bin Size**: Mandatory constraints to ensure statistical stability.
+*   **WoE Calculation**: Computed using the standard formula.
+*   **State Locking**: Bin edges and associated WoE values are frozen for production consistency.
 
-## 2. Component Design & Libraries
+## 4. WoE Transformation Step
+A reusable transformation layer maps raw inputs (F1–F13) → 13-dimensional WoE vector:
+*   **Consistency**: Identical logic for Training, Validation, and Production.
+*   **Fixed Order**: Documentation specifies the exact order (F1_WoE ... F13_WoE).
 
-### 2.1 Data Ingestion & Preprocessing
-**Goal:** Load the 100k row dataset and prepare it for scoring instantly.
-- **Library:** `pandas` (or `polars` for extreme speed-ups during the demo).
-- **Actions:** 
-  - Fill or impute any introduced nulls.
-  - One-hot encode categorical like `employment_category` and `city`.
-  - Extract the 13 raw behavioral signals (F1 - F13) directly from the CSV columns.
+## 5. Single PD Model (LightGBM)
+*   **Model Type**: A single LightGBM model trained on the 13 WoE features.
+*   **Objective**: Maximize discrimination (AUC) while controlling for overfit.
+*   **Freezing**: Once approved, model parameters, hyperparameters, and the feature sequence are version-locked.
 
-### 2.2 Feature Engineering (WoE & IV)
-**Goal:** Transform raw values to statistically robust risk scores to handle non-linear relationships and outliers cleanly.
-- **Library:** `category_encoders` (specifically `category_encoders.woe.WOEEncoder`) or a custom script.
-- **Actions:**
-  - Map continuous features into 10-20 bins.
-  - Calculate Default (Bad) vs Non-Default (Good) distributions per bin.
-  - Extract the **Top 4** highly predictive features via IV for the XGBoost Fast Path.
+## 6. PD Prediction
+*   **Output**: Predicted Probability of Default (PD) on a 0–1 or 0–100% scale (standardized to 0–100% for Anvaya).
+*   **Scale**: Consistently documented across the pipeline.
 
-### 2.3 XGBoost Fast Path (The "Green" Gate)
-**Goal:** A blazing fast classifier that instantly clears low-risk customers.
-- **Library:** `xgboost` (`xgb.XGBClassifier`)
-- **Config:** 100 trees (`n_estimators=100`), `max_depth=3`, `learning_rate=0.1`.
-- **Logic:** Only uses the Top 4 WoE features. If the Probability of Default (PD) is `< 0.15`, the user is tagged **GREEN** and computation stops.
+## 7. Quality Gate
+The model must pass four mandatory checks on a held-out/test slice:
+1.  **AUC-ROC**: Discrimination baseline.
+2.  **Accuracy + Confusion Matrix**: Interpretable performance at the decision threshold.
+3.  **Calibration**: Predicted PDs vs. Actual Default Rates (e.g., Brier score/Log-loss).
+4.  **Population Stability Index (PSI)**: Monitor distribution drift between training and current period.
 
-### 2.4 LightGBM Deep Path & Ensemble
-**Goal:** Deep analysis for borderline and risky profiles.
-- **Library:** `lightgbm` (`lgb.LGBMClassifier`)
-- **Config:** 150 trees, leaf-wise growth, handles all 13 WoE features.
-- **Ensemble Logic:** For customers with PD > 0.15 from XGBoost:
-  - `Final PD = (XGBoost_PD * 0.4) + (LightGBM_PD * 0.6)`
+## 8. PD Calibration
+A calibration layer (e.g., Isotonic Regression) ensures:
+*   Overall average PD aligns with the long-run default rate.
+*   Bucket-level alignment between predicted and realized defaults.
 
-### 2.5 Explainability (The Killer Hackathon Feature)
-**Goal:** Prove to judges that the model complies with SR 11-7 / regulatory explainability standards.
-- **Library:** `shap` (`shap.TreeExplainer`)
-- **Actions:** Pass the ensemble through SHAP. Output the Top 3 driving features for *why* a customer reached the RED band. 
+## 9. Risk Banding (Design B)
+Bands are derived purely from the Final Calibrated PD. Thresholds are calculated based on the data distribution:
+*   **GREEN**: Low risk.
+*   **MEDIUM**: Moderate risk.
+*   **HIGH**: Significant risk.
+*   **Policy**: Banding drives intervention types (Limits, Messaging, Collections).
 
-## 3. Demo Strategy (How to Win)
+## 10. SHAP Explainability
+*   **Logic**: TreeSHAP values computed on the 13 WoE inputs.
+*   **Output**: Per-customer risk drivers (positive and negative contributors) for RM-level transparency.
 
-For the final presentation, don't just show a Jupyter Notebook. Build a `Streamlit` app:
-1. **The RM View:** Have a sleek interface where the judge clicks "Simulate Nightly Batch".
-2. **The Output:** The app pulls from `dataset/`, runs the XGBoost/LGBM ensemble in seconds.
-3. **The Drill-Down:** Click on a "RED" categorized user. The UI expands to show the **SHAP Waterfall Plot**, explaining exactly which behavioral features (e.g., F5 Auto-debit failures + F2 Savings drawdown) triggered the alert.
-4. **The Edge-Cases:** Explicitly demo a "Gig Worker" profile getting a fairer score because of the alternate WoE bins, hitting the NIST AI and Consumer Duty talking points from the PRD.
+## 11. Governance and Versioning
+*   **Freezing**: WoE tables, model binary, and hyperparameters are versioned together.
+*   **Consistency**: Production scoring is a bit-perfect match for the offline evaluation flow.
