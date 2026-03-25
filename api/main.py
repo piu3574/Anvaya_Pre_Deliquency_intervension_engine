@@ -1,109 +1,153 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import os
 import joblib
 import pickle
-import pandas as pd
 import numpy as np
-import os
+import pandas as pd
+import shap
+import datetime
+from fastapi import FastAPI, HTTPException
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
-app = FastAPI(title="Anvaya Single-Model PD API", version="1.0")
+from api.supabase_client import get_raw_features, log_score
 
-# ── 1. LOAD MODELS & ARTIFACTS ─────────────────────────────────────────────
-MODELS_DIR = 'modeltraining'
-try:
-    lgbm_model = joblib.load(os.path.join(MODELS_DIR, 'lgbm_calibrated.pkl'))
+app = FastAPI(title="Anvaya Pre-Delinquency Intervention Engine")
+
+# ── 1. GLOBAL ARTIFACTS (Load on Startup) ──────────────────────────────────
+ARTIFACTS_DIR = "modeltraining"
+EXPLAIN_DIR = "explainability"
+
+# Models and Lookups
+xgb_model = None
+lgbm_model = None
+meta_model = None
+meta_scaler = None
+woe_lookup = None
+banding_config = None
+shap_explainer = None
+
+# Feature list (locked)
+FEAT_COLS = [
+    'F1_emi_to_income', 'F2_savings_drawdown', 'F3_salary_delay',
+    'F4_spend_shift', 'F5_auto_debit_fails', 'F6_lending_app_usage',
+    'F7_overdraft_freq', 'F8_stress_velocity', 'F9_payment_entropy',
+    'F10_peer_stress', 'F12_cross_loan', 'F13_secondary_income',
+    'F14_active_loan_pressure'
+]
+
+@app.on_event("startup")
+async def load_artifacts():
+    global xgb_model, lgbm_model, meta_model, meta_scaler, woe_lookup, banding_config, shap_explainer
     
-    with open(os.path.join(MODELS_DIR, 'woe_lookup.pkl'), 'rb') as f:
+    # Load Ensemble Components
+    xgb_model  = joblib.load(os.path.join(ARTIFACTS_DIR, "xgb_model.pkl"))
+    lgbm_model = joblib.load(os.path.join(ARTIFACTS_DIR, "lgbm_model.pkl"))
+    meta_model = joblib.load(os.path.join(ARTIFACTS_DIR, "ensemble_meta.pkl"))
+    meta_scaler = joblib.load(os.path.join(ARTIFACTS_DIR, "meta_scaler.pkl"))
+    
+    with open(os.path.join(ARTIFACTS_DIR, "woe_lookup.pkl"), "rb") as f:
         woe_lookup = pickle.load(f)
         
-    with open(os.path.join(MODELS_DIR, 'banding_config.pkl'), 'rb') as f:
+    with open(os.path.join(ARTIFACTS_DIR, "banding_config.pkl"), "rb") as f:
         banding_config = pickle.load(f)
-        
-    print(f"✅ Single-Model PD Pipeline loaded. GREEN <= {banding_config['green']}%, HIGH >= {banding_config['high']}%")
-except Exception as e:
-    print(f"⚠️ Error loading models/artifacts: {e}")
 
-# ── 2. SCHEMA ──────────────────────────────────────────────────────────────
-class CustomerData(BaseModel):
-    F1_emi_to_income: float
-    F2_savings_drawdown: float
-    F3_salary_delay: float
-    F4_spend_shift: float
-    F5_auto_debit_fails: float
-    F6_lending_app_usage: float
-    F7_overdraft_freq: float
-    F8_stress_velocity: float
-    F9_payment_entropy: float
-    F10_peer_stress: float
-    F12_cross_loan: float
-    F13_secondary_income: float
-    F14_active_loan_pressure: float
-    gig_worker_flag: int = 0
-    cold_start_flag: int = 0
+    # Initialize SHAP on LightGBM (as per spec)
+    shap_explainer = shap.TreeExplainer(lgbm_model)
 
-# ── 3. UTILITIES ────────────────────────────────────────────────────────────
-def get_woe(feat_name, value):
+# ── 2. SCORING UTILITIES ────────────────────────────────────────────────────
+def get_woe(feat_name: str, value: float) -> float:
     lookup = woe_lookup.get(feat_name, [])
     for entry in lookup:
-        # entry['bin'] is a pandas Interval object (serialized as-is in pkl)
-        if value in entry['bin']:
+        if entry['bin'][0] <= value <= entry['bin'][1]:
             return entry['woe']
-    # Fallback to last bin if not matched (boundary conditions)
+    # Fallback
     if lookup:
-        return lookup[-1]['woe']
+        return lookup[0]['woe'] if value < lookup[0]['bin'][0] else lookup[-1]['woe']
     return 0.0
 
-# ── 4. PREDICTION ENDPOINT ──────────────────────────────────────────────────
-@app.post("/predict")
-def predict_delinquency(data: CustomerData):
-    feature_dict = data.dict()
+def compute_woe_features(raw_row: Dict[str, Any]) -> np.ndarray:
+    woe_vec = []
+    for f in FEAT_COLS:
+        # Handling the emi_payment_day logic if raw_row has it directly
+        # But usually we assume pre-computed F1-F14 or the raw fields are passed.
+        # For simplicity, we assume F1...F14 keys are in raw_row or we compute them.
+        # Based on Phase-3 spec, we map raw features.
+        val = raw_row.get(f) or 0.0
+        woe_vec.append(get_woe(f, val))
+    return np.array(woe_vec)
+
+def explain_customer(woe_features: np.ndarray) -> List[Dict]:
+    # TreeSHAP on LightGBM
+    sv_logit = shap_explainer.shap_values(woe_features.reshape(1, -1))[0]
     
-    # 1. WoE Transformation
-    woe_features = {}
-    feats = [
-        'F1_emi_to_income', 'F2_savings_drawdown', 'F3_salary_delay',
-        'F4_spend_shift', 'F5_auto_debit_fails', 'F6_lending_app_usage',
-        'F7_overdraft_freq', 'F8_stress_velocity', 'F9_payment_entropy',
-        'F10_peer_stress', 'F12_cross_loan', 'F13_secondary_income',
-        'F14_active_loan_pressure'
-    ]
+    drivers = []
+    for i, feat in enumerate(FEAT_COLS):
+        val = float(sv_logit[i])
+        drivers.append({
+            "feature": feat,
+            "direction": "up" if val > 0 else "down",
+            "value": abs(val),
+            "reason_code": f"{feat.upper()}_{('HIGH' if val > 0 else 'LOW')}_RISK"
+        })
+    return sorted(drivers, key=lambda x: x["value"], reverse=True)[:3]
+
+# ── 4. ENDPOINTS ────────────────────────────────────────────────────────────
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "timestamp": datetime.datetime.utcnow().isoformat()}
+
+@app.get("/score/{customer_id}")
+async def get_score(customer_id: str):
+    # 1. Fetch from Supabase
+    raw_row = get_raw_features(customer_id)
+    if not raw_row:
+        raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in Supabase.")
     
-    for feat in feats:
-        woe_features[f"{feat}_WoE"] = get_woe(feat, feature_dict[feat])
+    # 2. WoE Transform
+    woe = compute_woe_features(raw_row)
     
-    # Ensure correct feature order for LightGBM
-    x_input = pd.DataFrame([woe_features])[[f"{f}_WoE" for f in feats]]
+    # 3. Base Models
+    pd_xgb  = float(xgb_model.predict_proba(woe.reshape(1, -1))[0, 1])
+    pd_lgbm = float(lgbm_model.predict_proba(woe.reshape(1, -1))[0, 1])
     
-    # 2. PD Prediction
-    pd_raw = float(lgbm_model.predict_proba(x_input)[0, 1]) * 100
+    # 4. Final Ensemble (Logistic Meta with Scaling)
+    meta_input = pd.DataFrame({'xgb': [pd_xgb], 'lgbm': [pd_lgbm]})
+    meta_input_scaled = meta_scaler.transform(meta_input)
+    pd_final = float(meta_model.predict_proba(meta_input_scaled)[0, 1])
     
-    # 3. Regulatory Uplifts
-    pd_final = pd_raw + (data.gig_worker_flag * 1.0) + (data.cold_start_flag * 0.5)
-    pd_final = min(100.0, max(0.0, pd_final))
+    # 5. Assign band
+    t_g = banding_config['green'] / 100
+    t_r = banding_config['red'] / 100
     
-    # 4. Data-Driven Risk Banding
-    g_thresh = banding_config['green']
-    h_thresh = banding_config['high']
+    if pd_final < t_g: band = "GREEN"
+    elif pd_final < t_r: band = "YELLOW"
+    else: band = "RED"
     
-    if pd_final <= g_thresh:
-        band = 'GREEN'
-    elif pd_final < h_thresh:
-        band = 'MEDIUM'
-    else:
-        band = 'HIGH'
-        
+    # 6. Explain with SHAP (on LGBM)
+    drivers = explain_customer(woe)
+    reason_codes = [d["reason_code"] for d in drivers]
+    
+    # 7. Log to Supabase
+    log_score(customer_id, pd_final, band, reason_codes)
+    
+    # 8. Return JSON
     return {
-        "customer_id": "API_SCORE_REALTIME",
-        "pd_raw": round(pd_raw, 2),
-        "pd_final": round(pd_final, 2),
-        "risk_band": band,
-        "uplifts_applied": {
-            "gig_worker": bool(data.gig_worker_flag),
-            "cold_start": bool(data.cold_start_flag)
-        },
-        "thresholds": banding_config
+        "customer_id": customer_id,
+        "pd_xgb": round(pd_xgb, 4),
+        "pd_lgbm": round(pd_lgbm, 4),
+        "pd_final": round(pd_final, 4),
+        "band": band,
+        "top_drivers": drivers,
+        "timestamp": datetime.datetime.utcnow().isoformat()
     }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.post("/score/batch")
+async def batch_score(request: BatchRequest):
+    results = []
+    for cid in request.customer_ids:
+        try:
+            res = await get_score(cid)
+            results.append(res)
+        except HTTPException:
+            results.append({"customer_id": cid, "status": "error", "detail": "Not found"})
+    return results

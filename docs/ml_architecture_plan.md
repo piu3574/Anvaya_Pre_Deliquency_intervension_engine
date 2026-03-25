@@ -1,60 +1,52 @@
-# Anvaya Phase-2: Single-Model PD Pipeline Architecture
+# ML Architecture Plan: Ensemble PD Pipeline (XGB + LGB)
 
-This document serves as the authoritative specification for the Anvaya Phase-2 Credit Risk Model (PD Pipeline). 
+This document specifies the authoritative version of the Anvaya Pre-Delinquency (PD) model architecture.
 
-## 1. Input Data and Features
-*   **Base Dataset**: Credit-risk dataset with binary `default_flag` (0/1).
-*   **Feature Set**: Exactly 13 agreed features (F1–F13) are used as predictors.
-*   **Constraint**: No other variables are permitted as direct model inputs.
+## 1. Overview
+The system uses a **Stacked Ensemble** approach to maximize predictive power and stability. Two base models (XGBoost and LightGBM) are combined via a Logistic Regression meta-model.
 
-## 2. Data Cleaning
-*   **Missing Values**: Handled with documented rules (e.g., median/mode imputation or bin-specific defaults; no silent dropping).
-*   **Outliers**: Capping/Winsorization is applied where necessary and documented.
-*   **Format**: All 13 features are numericized and validated for the binning stage.
+## 2. Feature Engineering: 13-Feature WoE
+The modeling pipeline uses a fixed set of 13 behavioral features (F1–F14, excluding F11). 
+- **No IV Filtering**: All 13 features are used in all models.
+- **WoE Transformation**: Features are binned and transformed into Weight of Evidence (WoE) scores based strictly on the training split.
+- **Locked Binning**: Bin edges and WoE values are frozen for production consistency.
 
-## 3. Binning and Weight of Evidence (WoE)
-*   **Supervised Binning**: Features are grouped into risk-meaningful buckets with monotone risk trends where logically expected.
-*   **Minimum Bin Size**: Mandatory constraints to ensure statistical stability.
-*   **WoE Calculation**: Computed using the standard formula.
-*   **State Locking**: Bin edges and associated WoE values are frozen for production consistency.
+## 3. Modeling Architecture
 
-## 4. WoE Transformation Step
-A reusable transformation layer maps raw inputs (F1–F13) → 13-dimensional WoE vector:
-*   **Consistency**: Identical logic for Training, Validation, and Production.
-*   **Fixed Order**: Documentation specifies the exact order (F1_WoE ... F13_WoE).
+### 3.1 Base Models
+Two gradient-boosted decision tree models are trained independently on the 13 WoE features:
+1.  **XGBoost (M_xgb13)**: Excellent for capturing non-linear interactions and sharp decision boundaries.
+2.  **LightGBM (M_lgbm13)**: Highly efficient and robust to noise, capturing deeper hierarchical patterns.
 
-## 5. Single PD Model (LightGBM)
-*   **Model Type**: A single LightGBM model trained on the 13 WoE features.
-*   **Objective**: Maximize discrimination (AUC) while controlling for overfit.
-*   **Freezing**: Once approved, model parameters, hyperparameters, and the feature sequence are version-locked.
+### 3.2 Meta-Model (Logistic Ensemble with Scaling)
+A regularized Logistic Regression model combines the probabilities from the base models:
+- **Scaling Layer**: Input probabilities `[pd_xgb, pd_lgbm]` are z-score standardized using a `StandardScaler` (mean=0, std=1) fit on the Validation set.
+- **Regularization**: L2 penalty with $C=0.1$ to ensure stability and prevent any single base model from dominating.
+- **Formula**:
+  - $z = \text{Scaler}([pd_{xgb}, pd_{lgbm}])$
+  - $logit(s) = a + w_1 \cdot z_1 + w_2 \cdot z_2$
+- **Output (PD_final)**: $\sigma(logit(s))$
+- **Key Artifacts**: `ensemble_meta.pkl` and `meta_scaler.pkl`.
 
-## 6. PD Prediction
-*   **Output**: Predicted Probability of Default (PD) on a 0–1 or 0–100% scale (standardized to 0–100% for Anvaya).
-*   **Scale**: Consistently documented across the pipeline.
+## 4. Training Protocol
+1.  **Split**: Stratified 60% Train / 20% Validation / 20% Test.
+2.  **WoE**: Fit on Train only (locked for production).
+3.  **Base Models**: XGBoost and LightGBM trained on Train (13 WoE).
+4.  **Meta-Model Scaling**: `StandardScaler` fitted on Validation split base PDs.
+5.  **Meta-Model Training**: Logistic Regression ($C=0.1$) fitted on **scaled** Validation base PDs.
+6.  **Thresholds**: Risk band cut-offs (T_G, T_Y, T_R) determined on Validation output distribution.
 
-## 7. Quality Gate
-The model must pass four mandatory checks on a held-out/test slice:
-1.  **AUC-ROC**: Discrimination baseline.
-2.  **Accuracy + Confusion Matrix**: Interpretable performance at the decision threshold.
-3.  **Calibration**: Predicted PDs vs. Actual Default Rates (e.g., Brier score/Log-loss).
-4.  **Population Stability Index (PSI)**: Monitor distribution drift between training and current period.
+## 5. Risk Banding
+Banding is applied only to the `pd_final` score:
+- 🟢 **GREEN**: `pd_final < T_G`
+- 🟡 **YELLOW**: `T_G <= pd_final < T_R`
+- 🔴 **RED**: `pd_final >= T_R`
 
-## 8. PD Calibration
-A calibration layer (e.g., Isotonic Regression) ensures:
-*   Overall average PD aligns with the long-run default rate.
-*   Bucket-level alignment between predicted and realized defaults.
+## 6. Explainability (SHAP)
+For all YELLOW and RED customers, SHAP values are calculated using the **LightGBM** base model's 13 features. The Top 3-5 features are extracted as risk drivers.
 
-## 9. Risk Banding (Design B)
-Bands are derived purely from the Final Calibrated PD. Thresholds are calculated based on the data distribution:
-*   **GREEN**: Low risk.
-*   **MEDIUM**: Moderate risk.
-*   **HIGH**: Significant risk.
-*   **Policy**: Banding drives intervention types (Limits, Messaging, Collections).
+## 7. Production Execution Flow
+**HTTP Request → Raw Features → WoE Transform → Base Scores (XGB + LGB) → Logistic Ensemble → PD_final → Banding → SHAP → JSON Response.**
 
-## 10. SHAP Explainability
-*   **Logic**: TreeSHAP values computed on the 13 WoE inputs.
-*   **Output**: Per-customer risk drivers (positive and negative contributors) for RM-level transparency.
-
-## 11. Governance and Versioning
-*   **Freezing**: WoE tables, model binary, and hyperparameters are versioned together.
-*   **Consistency**: Production scoring is a bit-perfect match for the offline evaluation flow.
+---
+*Version: 2.0 (Ensemble Architecture)*

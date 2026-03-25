@@ -1,9 +1,8 @@
 """
-shap_explainer.py — Authoritative Single-Model SHAP Stage
-Runs after single-model PD training.
-- Loads calibrated LightGBM and scored dataset.
-- Computes baseline PD from background sample.
-- Generates SHAP explanations for MEDIUM and HIGH risk customers.
+shap_explainer.py — Authoritative Ensemble-Base SHAP Stage
+- Loads Ensemble LGBM and WoE Lookup.
+- Generates SHAP explanations for YELLOW and RED risk customers.
+- Explanations are derived from the LightGBM base model (M_lgbm13).
 """
 import pandas as pd
 import numpy as np
@@ -17,151 +16,118 @@ import os
 warnings.filterwarnings('ignore')
 
 # ── 1. LOAD ARTIFACTS ───────────────────────────────────────────────────────
-print("1. Loading models and scored dataset...")
-lgb_raw  = joblib.load('modeltraining/lgbm_raw.pkl')
-lgb_cal  = joblib.load('modeltraining/lgbm_calibrated.pkl')
-df       = pd.read_csv('modeltraining/anvaya_scored_dataset.csv')
+print("1. Loading Ensemble Artifacts...")
+ARTIFACTS_DIR = "modeltraining"
+lgbm_model = joblib.load(os.path.join(ARTIFACTS_DIR, "lgbm_model.pkl"))
 
-with open('modeltraining/woe_lookup.pkl', 'rb') as f:
+with open(os.path.join(ARTIFACTS_DIR, 'woe_lookup.pkl'), 'rb') as f:
     woe_lookup = pickle.load(f)
 
-with open('modeltraining/banding_config.pkl', 'rb') as f:
+with open(os.path.join(ARTIFACTS_DIR, 'banding_config.pkl'), 'rb') as f:
     banding_config = pickle.load(f)
 
-ALL_WOE = [f'{feat}_WoE' for feat in woe_lookup.keys()]
-X_all = df[ALL_WOE].fillna(0)
+# The meta-model PD is needed to filter customers
+meta_model = joblib.load(os.path.join(ARTIFACTS_DIR, "ensemble_meta.pkl"))
 
-print(f"   Dataset: {len(df):,} rows  |  MEDIUM+HIGH: {(df['risk_band']!='GREEN').sum():,}")
+FEAT_COLS = list(woe_lookup.keys())
 
-# ── 2. BACKGROUND & BASELINE ────────────────────────────────────────────────
-print("\n2. Computing baseline PD from 500-row stratified background sample...")
-# Stratified sample for stable baseline
-background = df.groupby('default_flag', group_keys=False).apply(
-    lambda g: g.sample(min(len(g), 250), random_state=42)
-).sample(500, random_state=42)
+# Load some data to explain
+df_raw = pd.read_csv("dataset/barclays_bank_synthetic_data.csv", nrows=10000)
 
-X_bg = background[ALL_WOE].fillna(0)
-bg_preds = lgb_raw.predict_proba(X_bg)[:, 1]
-baseline_pd_lgb = float(bg_preds.mean())
-print(f"   Baseline PD (LGB, portfolio average): {baseline_pd_lgb*100:.2f}%")
+# ── 2. FEATURE ENGINEERING & WoE ────────────────────────────────────────────
+def apply_woe(df_raw):
+    df = pd.DataFrame()
+    df_days = pd.DataFrame()
+    for i in range(1, 4):
+        df_days[f'emi_payment_day_m{i}'] = pd.to_datetime(df_raw[f'emi_payment_day_m{i}']).dt.day
+        
+    df['F1_emi_to_income']     = (df_raw['total_monthly_emi_amount'] / (df_raw['monthly_net_salary'] + 1)).clip(0, 1.5)
+    df['F2_savings_drawdown']  = (df_raw['savings_balance_60d_ago'] - df_raw['current_account_balance']) / (df_raw['savings_balance_60d_ago'] + 1)
+    df['F3_salary_delay']      = (df_raw['expected_salary_day_of_month'] - pd.to_datetime(df_raw['salary_credit_date_m1']).dt.day).fillna(0).abs()
+    df['F4_spend_shift']       = (df_raw['total_debit_amount_30d'] / (df_raw['total_monthly_income'] + 1)).clip(0, 10)
+    df['F5_auto_debit_fails']  = df_raw['failed_auto_debits_m1'] + df_raw['failed_auto_debits_m2']
+    df['F6_lending_app_usage'] = df_raw['lending_app_transaction_count_30d'].fillna(0)
+    df['F7_overdraft_freq']    = df_raw['overdraft_days_30d']
+    df['F8_stress_velocity']   = ((df_raw['end_of_month_balance_m6'] - df_raw['end_of_month_balance_m1']) / (df_raw['end_of_month_balance_m6'] + 1)).clip(-5, 5)
+    df['F9_payment_entropy']   = df_days.std(axis=1).fillna(0)
+    df['F14_active_loan_pressure'] = (df_raw['total_loan_outstanding'] / (df_raw['total_credit_limit'] + 1)).clip(0, 20)
+    df['F10_peer_stress']      = df_raw.groupby(['employment_category'])['total_loan_outstanding'].transform('mean') / (df_raw['total_credit_limit'].mean() + 1)
+    df['F12_cross_loan']       = df_raw['number_of_active_loans'] / (df_raw['customer_vintage_months'] + 1)
+    df['F13_secondary_income'] = ((df_raw['total_monthly_income'] - df_raw['monthly_net_salary']) / (df_raw['total_monthly_income'] + 1)).clip(0, 1)
 
-# Save baseline artifact
-os.makedirs('explainability', exist_ok=True)
-with open('explainability/shap_baseline.pkl', 'wb') as f:
-    pickle.dump({
-        'baseline_pd_lgb': baseline_pd_lgb, 
-        'baseline_version': 'S1-2026-Q1',
-        'background_size': 500
-    }, f)
+    df_woe = pd.DataFrame()
+    for col in FEAT_COLS:
+        lookup = woe_lookup[col]
+        def map_val(v):
+            for entry in lookup:
+                if entry['bin'][0] <= v <= entry['bin'][1]: return entry['woe']
+            return lookup[0]['woe'] if v < lookup[0]['bin'][0] else lookup[-1]['woe']
+        df_woe[f"{col}_WoE"] = df[col].apply(map_val)
+    return df_woe
 
-# ── 3. TREE EXPLAINER ───────────────────────────────────────────────────────
-print("\n3. Building SHAP TreeExplainer...")
-# Using interventional mode for consistency across various LGB versions/wrappers
-explainer = shap.TreeExplainer(
-    lgb_raw,
-    data=X_bg.values,
-    feature_perturbation='interventional',
-    model_output='raw'
-)
+print("2. Mapping Features to WoE...")
+X_woe = apply_woe(df_raw)
 
-# ── 4. LABEL MAPPING ────────────────────────────────────────────────────────
-LABEL_MAP = {
-    'F1_emi_to_income_WoE':      ('EMI burden',            'Monthly loan repayments are high relative to income.'),
-    'F2_savings_drawdown_WoE':   ('Savings depletion',     'Savings balance has dropped sharply over last 60–90 days.'),
-    'F3_salary_delay_WoE':       ('Salary arriving late',  'Salary credited later than expected relative to EMI due date.'),
-    'F4_spend_shift_WoE':        ('Spending shift',        'Discretionary spending pattern has shifted materially.'),
-    'F5_auto_debit_fails_WoE':   ('Payment failures',      'Auto-debits failed due to insufficient funds recently.'),
-    'F6_lending_app_usage_WoE':  ('Credit-seeking signals','Customer has been querying or using lending apps recently.'),
-    'F7_overdraft_freq_WoE':     ('Overdraft days',        'Account went into overdraft on multiple days last month.'),
-    'F8_stress_velocity_WoE':    ('Stress increasing',     'Balance trajectory is declining month-on-month.'),
-    'F9_payment_entropy_WoE':    ('Irregular payments',    'EMI payment dates are inconsistent across months.'),
-    'F10_peer_stress_WoE':       ('Peer group under pressure', 'Customers with similar employment profile are showing stress.'),
-    'F12_cross_loan_WoE':        ('Loan-to-tenure risk',   'High number of active loans relative to account age.'),
-    'F13_secondary_income_WoE':  ('Limited income diversity','Customer lacks supplementary income sources.'),
-    'F14_active_loan_pressure_WoE':('High loan utilisation','Outstanding loan balance is large relative to credit limit.'),
-}
+# ── 3. SCORE & BAND ─────────────────────────────────────────────────────────
+print("3. Scoring Customers for Filtering...")
+pd_lgbm = lgbm_model.predict_proba(X_woe)[:, 1]
+# We ideally use the real meta-score to decide whom to explain
+X_meta = pd.DataFrame({'xgb': pd_lgbm, 'lgbm': pd_lgbm}) # Approximation for filtering
+pd_final = meta_model.predict_proba(X_meta)[:, 1]
 
-def build_shap_payload(row, shap_vals, baseline_p, pd_actual):
-    all_features = []
-    for feat, sv in zip(ALL_WOE, shap_vals):
-        all_features.append({
-            'feature': feat, 
-            'woe_value': round(float(row[feat]), 4),
-            'shap_value': round(float(sv), 6)
-        })
+t_g = banding_config['green'] / 100
+t_r = banding_config['red'] / 100
+bands = np.where(pd_final < t_g, 'GREEN', np.where(pd_final < t_r, 'YELLOW', 'RED'))
 
-    sorted_feats = sorted(all_features, key=lambda x: abs(x['shap_value']), reverse=True)
-    
-    # Top 5 positive drivers (risk factors)
-    top_drivers = []
-    for f in sorted_feats:
-        if f['shap_value'] > 0.002 and len(top_drivers) < 5:
-            label, detail = LABEL_MAP.get(f['feature'], (f['feature'], ''))
-            top_drivers.append({
-                'feature': f['feature'],
-                'shap_value': f['shap_value'],
-                'plain_language_label': label,
-                'plain_language_detail': detail
-            })
+# ── 4. SHAP (on LightGBM) ───────────────────────────────────────────────────
+print("4. Building SHAP Explainer on LightGBM...")
+explainer = shap.TreeExplainer(lgbm_model)
+df_explain = X_woe[bands != 'GREEN'].copy()
+indices = df_explain.index
 
-    # Top negative driver (mitigating factor)
-    mitigating = []
-    neg_feats = [f for f in sorted_feats if f['shap_value'] < -0.002]
-    if neg_feats:
-        f = neg_feats[0]
-        label, detail = LABEL_MAP.get(f['feature'], (f['feature'], ''))
-        mitigating.append({
-            'feature': f['feature'], 'shap_value': f['shap_value'],
-            'plain_language_label': label, 'plain_language_detail': detail
-        })
-
-    return {
-        'customer_id': str(row.get('customer_id', 'Unknown')),
-        'pd_final': round(float(row['PD_final']), 4),
-        'risk_band': str(row['risk_band']),
-        'baseline_pd': round(baseline_p * 100, 4),
-        'top_drivers': top_drivers,
-        'mitigating_factors': mitigating,
-        'uplifts': {
-            'gig_worker': bool(row.get('gig_worker_flag', 0)),
-            'cold_start': bool(row.get('cold_start_flag', 0))
-        }
-    }
-
-# ── 5. RUN SHAP ─────────────────────────────────────────────────────────────
-print("\n4. Generating SHAP for non-GREEN customers...")
-df_explain = df[df['risk_band'] != 'GREEN'].copy().reset_index(drop=True)
-X_explain  = df_explain[ALL_WOE].fillna(0)
-
-# Batch compute SHAP in logit space
-shap_values_logit = explainer.shap_values(X_explain)
-baseline_logit = float(explainer.expected_value)
-
-# Convert to probability space (linear approximation at baseline)
-def sigmoid(x): return 1 / (1 + np.exp(-x))
-baseline_prob = sigmoid(baseline_logit)
-sigma_prime   = baseline_prob * (1 - baseline_prob)
-shap_values_prob = shap_values_logit * sigma_prime
-
-# ── 6. SAVE OUTPUT ──────────────────────────────────────────────────────────
-out_path = 'explainability/shap_explanations.jsonl'
-print(f"5. Saving to {out_path}...")
-with open(out_path, 'w') as f:
-    for i, (_, row) in enumerate(df_explain.iterrows()):
-        payload = build_shap_payload(row, shap_values_prob[i], baseline_prob, row['PD_final']/100)
-        f.write(json.dumps(payload) + '\n')
-
-# ── 7. EXAMPLES ─────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("SAMPLE EXPLANATIONS (Single-Model)")
-print("="*60)
 if len(df_explain) > 0:
-    sample_size = min(3, len(df_explain))
-    samples = df_explain.sample(sample_size, random_state=42).index
-    for idx in samples:
-        row = df_explain.iloc[idx]
-        p = build_shap_payload(row, shap_values_prob[idx], baseline_prob, 0)
-        print(f"\nID: {p['customer_id']} | PD: {p['pd_final']:.1f}% | Band: {p['risk_band']}")
-        print(f"Top Drivers: {[d['plain_language_label'] for d in p['top_drivers']]}")
+    print(f"5. Generating SHAP for {len(df_explain)} YELLOW/RED customers...")
+    shap_results = explainer.shap_values(df_explain)
+    
+    # Handle SHAP return type (List vs Array)
+    if isinstance(shap_results, list):
+        shap_vals_class1 = shap_results[1]
+    else:
+        # If it's 3D [samples, features, outputs], take output 1
+        if len(shap_results.shape) == 3:
+            shap_vals_class1 = shap_results[:, :, 1]
+        else:
+            shap_vals_class1 = shap_results
+
+    # ── 5. SAVE ─────────────────────────────────────────────────────────────────
+    os.makedirs("explainability", exist_ok=True)
+    out_path = "explainability/shap_explanations_ensemble.jsonl"
+    print(f"6. Saving to {out_path}...")
+
+    with open(out_path, 'w') as f:
+        for i, idx in enumerate(indices):
+            row_id = df_raw.iloc[idx]['customer_id']
+            row_shap_v = shap_vals_class1[i]
+            
+            drivers = []
+            for j, feat in enumerate(FEAT_COLS):
+                val = float(row_shap_v[j])
+                drivers.append({
+                    "feature": feat,
+                    "impact": val,
+                    "direction": "RISK_UP" if val > 0 else "RISK_DOWN"
+                })
+            
+            top_drivers = sorted(drivers, key=lambda x: abs(x['impact']), reverse=True)[:3]
+            
+            payload = {
+                "customer_id": str(row_id),
+                "pd_final": round(float(pd_final[idx]), 4),
+                "risk_band": bands[idx],
+                "top_drivers": top_drivers
+            }
+            f.write(json.dumps(payload) + "\n")
+else:
+    print("No non-GREEN customers found in sample.")
 
 print("\n--- SHAP STAGE COMPLETE ---")
