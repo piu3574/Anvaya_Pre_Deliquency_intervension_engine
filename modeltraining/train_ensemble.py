@@ -1,10 +1,9 @@
 """
-train_ensemble.py — Authoritative Ensemble PD Pipeline (XGB + LGB + Logistic Meta)
-- 60/20/20 Stratified Split
+train_ensemble.py — Simple Averaging Ensemble Pipeline (XGB + LGB)
 - 13 WoE Features
 - XGBoost & LightGBM Base Models
-- Logistic Regression Meta-Model (Ensemble)
-- Data-driven Banding Thresholds
+- Weighted Average (0.4 / 0.6)
+- Risk Thresholds: 10% (G), 20% (R)
 """
 import pandas as pd
 import numpy as np
@@ -13,16 +12,14 @@ import pickle
 import os
 import xgboost as xgb
 import lightgbm as lgb
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, accuracy_score, log_loss
-from sklearn.calibration import CalibratedClassifierCV
 import warnings
 
 warnings.filterwarnings('ignore')
 
 # ── 1. CONFIG ───────────────────────────────────────────────────────────────
-DATA_PATH = "dataset/barclays_bank_synthetic_data.csv"
+DATA_PATH = "dataset/portfolio_100k.csv"
 OUTPUT_DIR = "modeltraining"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -97,37 +94,75 @@ def run_training():
     
     print(f"   Splits created: Train={len(X_train)}, Val={len(X_val)}, Test={len(X_test)}")
 
-    # 5. WoE Fitting (Train only)
-    print("2. Fitting WoE Bins...")
+    # 5. WoE    # --- FITTING WOE ---
+    print("3. Fitting WoE Transformations (Locked)...")
     woe_lookup = {}
-    for col in FEAT_COLS:
-        # Save both bin edges and WoE
-        bins = pd.qcut(X_train[col], 10, duplicates='drop', retbins=True)
-        bin_edges = bins[1]
-        
-        # Calculate WoE
-        tmp = pd.DataFrame({'val': X_train[col], 'y': y_train})
-        tmp['bin_idx'] = pd.cut(tmp['val'], bins=bin_edges, include_lowest=True, labels=False)
-        
-        stats = tmp.groupby('bin_idx')['y'].agg(['count', 'sum'])
-        stats['good'] = stats['count'] - stats['sum']
-        stats['bad'] = stats['sum']
-        stats['good'] = stats['good'].replace(0, 0.5)
-        stats['bad'] = stats['bad'].replace(0, 0.5)
-        
-        p_good = stats['good'] / stats['good'].sum()
-        p_bad = stats['bad'] / stats['bad'].sum()
-        woe_map = np.log(p_bad / p_good)
-        
-        # Store for lookup
-        lookup_entry = []
-        for idx, w in woe_map.items():
-            # Create interval object for lookup
-            left = bin_edges[int(idx)]
-            right = bin_edges[int(idx)+1]
-            lookup_entry.append({'bin': (left, right), 'woe': w})
-        
-        woe_lookup[col] = lookup_entry
+    
+    # Define manual bins for critical features to ensure sensitivity
+    manual_bins = {
+        'F1_emi_to_income': [0, 0.2, 0.4, 0.6, 0.8, 1.5],
+        'F5_auto_debit_fails': [0, 1, 2, 3, 5, 20],
+        'F14_active_loan_pressure': [0, 0.2, 0.4, 0.6, 0.8, 2.0]
+    }
+
+    for f in FEAT_COLS:
+        col_data = X_train[f]
+        if f in manual_bins:
+            # Use manual edges if defined
+            edges = manual_bins[f]
+            # Digitize to get bins
+            bins = np.digitize(col_data, edges) - 1
+            # Ensure bins are in 0..N-1 range
+            bins = np.clip(bins, 0, len(edges)-2)
+            
+            # Compute WoE for each manual bin
+            bins_series = pd.Series(bins, index=col_data.index)
+            f_stats = pd.DataFrame({'bin': bins_series, 'target': y_train}).groupby('bin')['target'].agg(['count', 'sum'])
+            f_stats['non_target'] = f_stats['count'] - f_stats['sum']
+            
+            total_target = f_stats['sum'].sum()
+            total_non_target = f_stats['non_target'].sum()
+            
+            f_lookup = []
+            for b_idx in range(len(edges)-1):
+                s = f_stats.loc[b_idx] if b_idx in f_stats.index else {'sum':0, 'non_target':0}
+                t_rate = (s['sum'] + 0.5) / (total_target + 1)
+                nt_rate = (s['non_target'] + 0.5) / (total_non_target + 1)
+                woe_val = np.log(t_rate / nt_rate)
+                f_lookup.append({
+                    "bin": (float(edges[b_idx]), float(edges[b_idx+1])),
+                    "woe": float(woe_val)
+                })
+            woe_lookup[f] = f_lookup
+        else:
+            # Default to basic quantiles for other features to prevent collapse
+            try:
+                # Use simple fixed quantiles if decision tree fails
+                edges = [col_data.min()] + list(np.percentile(col_data, [20, 40, 60, 80])) + [col_data.max()]
+                edges = sorted(list(set(edges))) # remove duplicates
+                
+                bins = np.digitize(col_data, edges) - 1
+                bins = np.clip(bins, 0, len(edges)-2)
+                bins_series = pd.Series(bins, index=col_data.index)
+                
+                f_stats = pd.DataFrame({'bin': bins_series, 'target': y_train}).groupby('bin')['target'].agg(['count', 'sum'])
+                f_stats['non_target'] = f_stats['count'] - f_stats['sum']
+                total_target = f_stats['sum'].sum()
+                total_non_target = f_stats['non_target'].sum()
+
+                f_lookup = []
+                for b_idx in range(len(edges)-1):
+                    s = f_stats.loc[b_idx] if b_idx in f_stats.index else {'sum':0, 'non_target':0}
+                    t_rate = (s['sum'] + 0.5) / (total_target + 1)
+                    nt_rate = (s['non_target'] + 0.5) / (total_non_target + 1)
+                    woe_val = np.log(t_rate / nt_rate)
+                    f_lookup.append({
+                        "bin": (float(edges[b_idx]), float(edges[b_idx+1])),
+                        "woe": float(woe_val)
+                    })
+                woe_lookup[f] = f_lookup
+            except Exception:
+                woe_lookup[f] = [{"bin": (-999.0, 999.0), "woe": 0.0}]
 
     # 6. Transform Splits
     def apply_woe(df_in):
@@ -135,8 +170,9 @@ def run_training():
         for col in FEAT_COLS:
             lookup = woe_lookup[col]
             def map_val(v):
+                if not lookup: return 0.0
                 for entry in lookup:
-                    if entry['bin'][0] <= v <= entry['bin'][1]:
+                    if entry['bin'][0] <= v <= entry["bin"][1]:
                         return entry['woe']
                 # Out of range fallback
                 if v < lookup[0]['bin'][0]: return lookup[0]['woe']
@@ -153,52 +189,32 @@ def run_training():
 
     # 7. Base Model Training (Train)
     print("4. Training Base Models...")
-    # XGBoost
-    m_xgb = xgb.XGBClassifier(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42, use_label_encoder=False, eval_metric='logloss')
+    # XGBoost with scale_pos_weight
+    m_xgb = xgb.XGBClassifier(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42, 
+                              use_label_encoder=False, eval_metric='logloss', scale_pos_weight=5.0)
     m_xgb.fit(X_train_woe, y_train)
     
-    # LightGBM
-    m_lgbm = lgb.LGBMClassifier(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42)
+    # LightGBM with scale_pos_weight
+    m_lgbm = lgb.LGBMClassifier(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42, scale_pos_weight=5.0)
     m_lgbm.fit(X_train_woe, y_train)
 
-    # 8. Logistic Ensemble Training (Validation)
-    print("5. Training Logistic Meta-Model (Validation)...")
-    from sklearn.preprocessing import StandardScaler
-    
+    # 8. Simple Averaging Logic
+    print("5. Computing Simple Average PD (0.4 XGB / 0.6 LGBM)...")
     pd_xgb_val = m_xgb.predict_proba(X_val_woe)[:, 1]
     pd_lgbm_val = m_lgbm.predict_proba(X_val_woe)[:, 1]
+    pd_final_val = (0.4 * pd_xgb_val) + (0.6 * pd_lgbm_val)
     
-    X_meta_val = pd.DataFrame({'xgb': pd_xgb_val, 'lgbm': pd_lgbm_val})
+    # 9. Set Thresholds - FIXED AS PER USER SPEC
+    t_g = 0.100 # 10% PD threshold for Green
+    t_r = 0.200 # 20% PD threshold for Red
     
-    # NEW: Standardization
-    meta_scaler = StandardScaler()
-    X_meta_val_scaled = meta_scaler.fit_transform(X_meta_val)
-    
-    # Meta-model with stronger regularization as per spec
-    meta_model = LogisticRegression(penalty='l2', C=0.1, random_state=42)
-    meta_model.fit(X_meta_val_scaled, y_val)
-    
-    # 9. Determine Thresholds (Validation) - DATA DRIVEN
-    print("6. Calculating Data-Driven Thresholds (using Scaled Meta)...")
-    pd_final_val = meta_model.predict_proba(X_meta_val_scaled)[:, 1]
-    
-    # Logic: 
-    # GREEN: Target top 60% of cases or where DR <= 3%
-    # RED: Target bottom 15% or where PD is extreme
-    t_g = np.percentile(pd_final_val, 60) # Top 60% safe-ish
-    t_r = np.percentile(pd_final_val, 85) # Bottom 15% risky
-
-    # Refine based on observed bad rates if needed, but percentiles are a safe data-driven start
-    print(f"   Derived Thresholds: GREEN <= {t_g:.4f}, RED >= {t_r:.4f}")
+    print(f"   Using Production Thresholds: GREEN < {t_g:.2f}, RED >= {t_r:.2f}")
 
     # 10. Evaluation (Test)
-    print("7. Final Quality Gate (Test)...")
+    print("6. Final Quality Gate (Test)...")
     pd_xgb_test = m_xgb.predict_proba(X_test_woe)[:, 1]
     pd_lgbm_test = m_lgbm.predict_proba(X_test_woe)[:, 1]
-    X_meta_test = pd.DataFrame({'xgb': pd_xgb_test, 'lgbm': pd_lgbm_test})
-    X_meta_test_scaled = meta_scaler.transform(X_meta_test)
-    
-    pd_final_test = meta_model.predict_proba(X_meta_test_scaled)[:, 1]
+    pd_final_test = (0.4 * pd_xgb_test) + (0.6 * pd_lgbm_test)
     
     auc = roc_auc_score(y_test, pd_final_test)
     acc = accuracy_score(y_test, (pd_final_test > t_r).astype(int)) # Acc at RED threshold
@@ -217,11 +233,14 @@ def run_training():
         print(f"   Band {b:6s} | Vol: {len(subset):6d} | DR: {dr:5.2f}%")
 
     # 11. PERSIST ARTIFACTS
-    print("\n8. Saving Artifacts...")
+    print("\n7. Saving Production Artifacts...")
     joblib.dump(m_xgb, os.path.join(OUTPUT_DIR, "xgb_model.pkl"))
     joblib.dump(m_lgbm, os.path.join(OUTPUT_DIR, "lgbm_model.pkl"))
-    joblib.dump(meta_model, os.path.join(OUTPUT_DIR, "ensemble_meta.pkl"))
-    joblib.dump(meta_scaler, os.path.join(OUTPUT_DIR, "meta_scaler.pkl"))
+    
+    # Remove stale meta-artifacts if they exist
+    for stale in ["ensemble_meta.pkl", "meta_scaler.pkl"]:
+        p = os.path.join(OUTPUT_DIR, stale)
+        if os.path.exists(p): os.remove(p)
     
     with open(os.path.join(OUTPUT_DIR, "woe_lookup.pkl"), "wb") as f:
         pickle.dump(woe_lookup, f)
