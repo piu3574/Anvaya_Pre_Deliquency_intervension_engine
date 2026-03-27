@@ -15,102 +15,88 @@ import os
 
 warnings.filterwarnings('ignore')
 
-# ── 1. LOAD ARTIFACTS ───────────────────────────────────────────────────────
-print("1. Loading Ensemble Artifacts...")
+# ── 1. CONFIG & REPRODUCIBILITY ─────────────────────────────────────────────
+SEED = 42
+DATA_PATH = "dataset/hyper_realistic_portfolio_100k.csv"
 ARTIFACTS_DIR = "modeltraining"
-lgbm_model = joblib.load(os.path.join(ARTIFACTS_DIR, "lgbm_model.pkl"))
 
-with open(os.path.join(ARTIFACTS_DIR, 'woe_lookup.pkl'), 'rb') as f:
-    woe_lookup = pickle.load(f)
+FEATURE_NAMES = [
+    'stress_f1', 'stress_f2', 'stress_f3', 'stress_f5', 'stress_f6', 
+    'stress_f14', 'vintage', 'age', 'income_vol', 'overdraft'
+]
 
-with open(os.path.join(ARTIFACTS_DIR, 'banding_config.pkl'), 'rb') as f:
-    banding_config = pickle.load(f)
+def engineer_turbo_features(df_raw):
+    """
+    Same Turbo implementation as train_v3_turbo_final.py.
+    """
+    X = pd.DataFrame({
+        'stress_f1': (df_raw['total_monthly_emi_amount'] / (df_raw['total_salary_credit_30d'] + 1)).clip(0, 1),
+        'stress_f2': (1 - (df_raw['savings_balance_current'] / (df_raw['savings_balance_60d_ago'] + 1))).clip(0, 1),
+        'stress_f3': ((df_raw['salary_credit_date_m1'] - df_raw['expected_salary_date']).abs() / 10).clip(0, 1),
+        'stress_f5': (df_raw['auto_debit_failure_count_30d'] / 5).clip(0, 1),
+        'stress_f6': (df_raw['lending_app_transaction_count_30d'] / 10).clip(0, 1),
+        'stress_f14': (df_raw['total_loan_outstanding'] / (df_raw['total_credit_limit'] + 1)).clip(0, 1),
+        'vintage': df_raw['customer_vintage_months'] / 240.0,
+        'age': df_raw['age'] / 75.0,
+        'income_vol': df_raw['income_volatility_ratio_3m'],
+        'overdraft': df_raw['overdraft_days_30d'] / 30.0
+    })
+    y = df_raw.get('default_status', 0)
+    customer_ids = df_raw.get('external_customer_id', [f"CUST_{i:06d}" for i in range(len(df_raw))])
+    return X, y, customer_ids
 
-# The meta-model PD is needed to filter customers
-meta_model = joblib.load(os.path.join(ARTIFACTS_DIR, "ensemble_meta.pkl"))
-
-FEAT_COLS = list(woe_lookup.keys())
-
-# Load some data to explain
-df_raw = pd.read_csv("dataset/barclays_bank_synthetic_data.csv", nrows=10000)
-
-# ── 2. FEATURE ENGINEERING & WoE ────────────────────────────────────────────
-def apply_woe(df_raw):
-    df = pd.DataFrame()
-    df_days = pd.DataFrame()
-    for i in range(1, 4):
-        df_days[f'emi_payment_day_m{i}'] = pd.to_datetime(df_raw[f'emi_payment_day_m{i}']).dt.day
-        
-    df['F1_emi_to_income']     = (df_raw['total_monthly_emi_amount'] / (df_raw['monthly_net_salary'] + 1)).clip(0, 1.5)
-    df['F2_savings_drawdown']  = (df_raw['savings_balance_60d_ago'] - df_raw['current_account_balance']) / (df_raw['savings_balance_60d_ago'] + 1)
-    df['F3_salary_delay']      = (df_raw['expected_salary_day_of_month'] - pd.to_datetime(df_raw['salary_credit_date_m1']).dt.day).fillna(0).abs()
-    df['F4_spend_shift']       = (df_raw['total_debit_amount_30d'] / (df_raw['total_monthly_income'] + 1)).clip(0, 10)
-    df['F5_auto_debit_fails']  = df_raw['failed_auto_debits_m1'] + df_raw['failed_auto_debits_m2']
-    df['F6_lending_app_usage'] = df_raw['lending_app_transaction_count_30d'].fillna(0)
-    df['F7_overdraft_freq']    = df_raw['overdraft_days_30d']
-    df['F8_stress_velocity']   = ((df_raw['end_of_month_balance_m6'] - df_raw['end_of_month_balance_m1']) / (df_raw['end_of_month_balance_m6'] + 1)).clip(-5, 5)
-    df['F9_payment_entropy']   = df_days.std(axis=1).fillna(0)
-    df['F14_active_loan_pressure'] = (df_raw['total_loan_outstanding'] / (df_raw['total_credit_limit'] + 1)).clip(0, 20)
-    df['F10_peer_stress']      = df_raw.groupby(['employment_category'])['total_loan_outstanding'].transform('mean') / (df_raw['total_credit_limit'].mean() + 1)
-    df['F12_cross_loan']       = df_raw['number_of_active_loans'] / (df_raw['customer_vintage_months'] + 1)
-    df['F13_secondary_income'] = ((df_raw['total_monthly_income'] - df_raw['monthly_net_salary']) / (df_raw['total_monthly_income'] + 1)).clip(0, 1)
-
-    df_woe = pd.DataFrame()
-    for col in FEAT_COLS:
-        lookup = woe_lookup[col]
-        def map_val(v):
-            for entry in lookup:
-                if entry['bin'][0] <= v <= entry['bin'][1]: return entry['woe']
-            return lookup[0]['woe'] if v < lookup[0]['bin'][0] else lookup[-1]['woe']
-        df_woe[f"{col}_WoE"] = df[col].apply(map_val)
-    return df_woe
-
-print("2. Mapping Features to WoE...")
-X_woe = apply_woe(df_raw)
-
-# ── 3. SCORE & BAND ─────────────────────────────────────────────────────────
-print("3. Scoring Customers for Filtering...")
-pd_lgbm = lgbm_model.predict_proba(X_woe)[:, 1]
-# We ideally use the real meta-score to decide whom to explain
-X_meta = pd.DataFrame({'xgb': pd_lgbm, 'lgbm': pd_lgbm}) # Approximation for filtering
-pd_final = meta_model.predict_proba(X_meta)[:, 1]
-
-t_g = banding_config['green'] / 100
-t_r = banding_config['red'] / 100
-bands = np.where(pd_final < t_g, 'GREEN', np.where(pd_final < t_r, 'YELLOW', 'RED'))
-
-# ── 4. SHAP (on LightGBM) ───────────────────────────────────────────────────
-print("4. Building SHAP Explainer on LightGBM...")
-explainer = shap.TreeExplainer(lgbm_model)
-df_explain = X_woe[bands != 'GREEN'].copy()
-indices = df_explain.index
-
-if len(df_explain) > 0:
-    print(f"5. Generating SHAP for {len(df_explain)} YELLOW/RED customers...")
-    shap_results = explainer.shap_values(df_explain)
+def run_shap_stage():
+    print("🚀 [Step 1] Loading Hyper-Realistic Data & Models...")
+    df_raw = pd.read_csv(DATA_PATH)
+    X, y, cids = engineer_turbo_features(df_raw)
     
-    # Handle SHAP return type (List vs Array)
-    if isinstance(shap_results, list):
-        shap_vals_class1 = shap_results[1]
-    else:
-        # If it's 3D [samples, features, outputs], take output 1
-        if len(shap_results.shape) == 3:
-            shap_vals_class1 = shap_results[:, :, 1]
-        else:
-            shap_vals_class1 = shap_results
+    m_xgb = joblib.load(os.path.join(ARTIFACTS_DIR, "xgb_model.pkl"))
+    m_lgbm = joblib.load(os.path.join(ARTIFACTS_DIR, "lgbm_model.pkl"))
+    m_meta = joblib.load(os.path.join(ARTIFACTS_DIR, "ensemble_meta.pkl"))
+    m_scaler = joblib.load(os.path.join(ARTIFACTS_DIR, "meta_scaler.pkl"))
+    
+    with open(os.path.join(ARTIFACTS_DIR, "banding_config.pkl"), "rb") as f:
+        bc = pickle.load(f)
+    t_green, t_red = bc['green']/100.0, bc['red']/100.0
 
-    # ── 5. SAVE ─────────────────────────────────────────────────────────────────
+    print("🚀 [Step 2] Filtering for High-Risk (YELLOW/RED) Customers...")
+    p_xgb = m_xgb.predict_proba(X)[:, 1]
+    p_lgbm = m_lgbm.predict_proba(X)[:, 1]
+    X_meta = m_scaler.transform(pd.DataFrame({'xgb': p_xgb, 'lgbm': p_lgbm}))
+    p_final = m_meta.predict_proba(X_meta)[:, 1]
+    
+    bands = np.where(p_final >= t_red, 'RED', np.where(p_final >= t_green, 'YELLOW', 'GREEN'))
+    high_risk_idx = np.where(bands != 'GREEN')[0]
+    
+    if len(high_risk_idx) == 0:
+        print("No non-GREEN customers found. Terminating SHAP stage.")
+        return
+
+    # Subsample for speed if needed (e.g., first 500)
+    sample_idx = high_risk_idx[:500] 
+    X_sample = X.iloc[sample_idx]
+    
+    print(f"🚀 [Step 3] Building SHAP Explainer (on LightGBM base)...")
+    explainer = shap.TreeExplainer(m_lgbm)
+    shap_results = explainer.shap_values(X_sample)
+    
+    # Handle SHAP return type
+    if isinstance(shap_results, list): shap_vals = shap_results[1]
+    elif len(shap_results.shape) == 3: shap_vals = shap_results[:, :, 1]
+    else: shap_vals = shap_results
+
+    # 4. Save
     os.makedirs("explainability", exist_ok=True)
     out_path = "explainability/shap_explanations_ensemble.jsonl"
-    print(f"6. Saving to {out_path}...")
+    print(f"🚀 [Step 4] Saving to {out_path}...")
 
     with open(out_path, 'w') as f:
-        for i, idx in enumerate(indices):
-            row_id = df_raw.iloc[idx]['customer_id']
-            row_shap_v = shap_vals_class1[i]
+        for i, idx in enumerate(sample_idx):
+            row_id = cids[idx]
+            row_shap_v = shap_vals[i]
             
             drivers = []
-            for j, feat in enumerate(FEAT_COLS):
+            for j, feat in enumerate(FEATURE_NAMES):
                 val = float(row_shap_v[j])
                 drivers.append({
                     "feature": feat,
@@ -122,12 +108,11 @@ if len(df_explain) > 0:
             
             payload = {
                 "customer_id": str(row_id),
-                "pd_final": round(float(pd_final[idx]), 4),
+                "pd_final": round(float(p_final[idx]), 4),
                 "risk_band": bands[idx],
                 "top_drivers": top_drivers
             }
             f.write(json.dumps(payload) + "\n")
-else:
     print("No non-GREEN customers found in sample.")
 
 print("\n--- SHAP STAGE COMPLETE ---")
