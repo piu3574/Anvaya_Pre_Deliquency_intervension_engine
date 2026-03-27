@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Credentials
+SUPARTIFACTS_DIR = os.path.join("modeltraining", "artifacts")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 

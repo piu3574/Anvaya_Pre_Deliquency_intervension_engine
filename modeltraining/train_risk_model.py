@@ -19,7 +19,7 @@ from scipy.stats import ks_2samp
 SEED = 42
 np.random.seed(SEED)
 DATA_PATH = "dataset/hyper_realistic_portfolio_100k.csv"
-OUTPUT_DIR = "modeltraining"
+OUTPUT_DIR = os.path.join("modeltraining", "artifacts")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 2. FEATURE ENGINEERING (TURBO SIGNATURE)

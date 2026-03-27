@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 # ── 1. CONFIG & REPRODUCIBILITY ─────────────────────────────────────────────
 SEED = 42
 DATA_PATH = "dataset/hyper_realistic_portfolio_100k.csv"
-ARTIFACTS_DIR = "modeltraining"
+ARTIFACTS_DIR = os.path.join("modeltraining", "artifacts")
 
 FEATURE_NAMES = [
     'stress_f1', 'stress_f2', 'stress_f3', 'stress_f5', 'stress_f6', 

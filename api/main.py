@@ -49,7 +49,7 @@ def save_score_to_supabase(
 app = FastAPI(title="Anvaya Pre-Delinquency Engine (V3 Turbo)")
 
 # ── 2. GLOBAL ARTIFACTS (V3 Turbo Final) ────────────────────────────────────
-ARTIFACTS_DIR = "modeltraining"
+ARTIFACTS_DIR = os.path.join("modeltraining", "artifacts")
 
 m_xgb = None
 m_lgbm = None

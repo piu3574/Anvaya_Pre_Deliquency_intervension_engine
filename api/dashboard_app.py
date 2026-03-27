@@ -16,7 +16,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Artifacts for V3 Turbo
-MODELS_DIR = "modeltraining"
+MODELS_DIR = os.path.join("modeltraining", "artifacts")
 m_xgb = joblib.load(os.path.join(MODELS_DIR, "xgb_model.pkl"))
 m_lgbm = joblib.load(os.path.join(MODELS_DIR, "lgbm_model.pkl"))
 m_meta = joblib.load(os.path.join(MODELS_DIR, "ensemble_meta.pkl"))

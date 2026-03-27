@@ -14,12 +14,12 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # LOAD
-m_xgb = joblib.load('modeltraining/xgb_model.pkl')
-m_lgbm = joblib.load('modeltraining/lgbm_model.pkl')
-m_meta = joblib.load('modeltraining/ensemble_meta.pkl')
-m_scaler = joblib.load('modeltraining/meta_scaler.pkl')
+m_xgb = joblib.load('modeltraining/artifacts/xgb_model.pkl')
+m_lgbm = joblib.load('modeltraining/artifacts/lgbm_model.pkl')
+m_meta = joblib.load('modeltraining/artifacts/ensemble_meta.pkl')
+m_scaler = joblib.load('modeltraining/artifacts/meta_scaler.pkl')
 
-bc = pickle.load(open('modeltraining/banding_config.pkl', 'rb'))
+bc = pickle.load(open('modeltraining/artifacts/banding_config.pkl', 'rb'))
 t_green = bc['green']/100.0
 t_red = bc['red']/100.0
 

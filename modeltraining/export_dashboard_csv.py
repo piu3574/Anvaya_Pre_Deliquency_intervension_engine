@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 # ── 1. CONFIG & REPRODUCIBILITY ─────────────────────────────────────────────
 SEED = 42
 DATA_PATH = "dataset/hyper_realistic_portfolio_100k.csv"
-ARTIFACTS_DIR = "modeltraining"
+ARTIFACTS_DIR = os.path.join("modeltraining", "artifacts")
 
 def engineer_turbo_features(df_raw):
     """
