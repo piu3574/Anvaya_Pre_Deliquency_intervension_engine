@@ -1,0 +1,55 @@
+
+             .',;::::;,'.
+         .';:cccccccccccc:;,.
+      .;cccccccccccccccccccccc;.
+    .:cccccccccccccccccccccccccc:.
+  .;ccccccccccccc;.:dddl:.;ccccccc;.
+ .:ccccccccccccc;OWMKOOXMWd;ccccccc:.
+.:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.
+,cccccccccccccc;MMM.;cc;;WW:;cccccccc,
+:cccccccccccccc;MMM.;cccccccccccccccc:
+:ccccccc;oxOOOo;MMM000k.;cccccccccccc:
+cccccc;0MMKxdd:;MMMkddc.;cccccccccccc;
+ccccc;XMO';cccc;MMM.;cccccccccccccccc'
+ccccc;MMo;ccccc;MMW.;ccccccccccccccc;
+ccccc;0MNc.ccc.xMMd;ccccccccccccccc;
+cccccc;dNMWXXXWM0:;cccccccccccccc:,
+cccccccc;.:odl:.;cccccccccccccc:,.
+ccccccccccccccccccccccccccccc:'.
+:ccccccccccccccccccccccc:;,..
+ ':cccccccccccccccc::;,.[1G[19A[42C
+[42C DISTRO 󰑃  Fedora Linux 43 (Workstation Edition) x86_64
+[42C│ ├ 󰑃  Linux 6.19.6-200.fc43.x86_64
+[42C│ ├ 󰑃  JaKooLit Version:
+[42C│ ├󰏖 󰑃  3648 (rpm), 36 (flatpak), 1 (brew), 1 (brew-cask)
+[42C│ └ 󰑃  bash 5.3.0
+[42C DE/WM 󰑃  Mutter (Wayland)
+[42C│ ├󰉼 󰑃  adw-gtk3-dark
+[42C│ ├󰀻 󰑃  Flat-Remix-Blue-Dark [GTK2/3/4]
+[42C│ ├ 󰑃  Bibata-Modern-Classic (24px)
+[42C│ └ 󰑃  xterm-256color
+[42C󰌢 SYSTEM 󰑃  750XFG (P10CFL)
+[42C│ ├󰻠 󰑃  13th Gen Intel(R) Core(TM) i5-1335U (12) @ 4.60 GHz
+[42C│ ├󰻑 󰑃  Iris Xe Graphics
+[42C│ ├󰍹 󰑃  1920x1080 @ 60Hz
+[42C│ ├󰾆 󰑃  10.16 GiB / 15.29 GiB (66%)
+[42C│ ├󰓡 󰑃  3.61 GiB / 8.00 GiB (45%)
+[42C│ ├󰅐 󰑃  1 day, 6 hours, 42 mins
+[42C│ └󰍹 󰑃  1920x1080 in 15", 60 Hz [Built-in]
+[42C AUDIO 󰑃  Raptor Lake-P/U/H cAVS Speaker
+[42C│ ├󰥠 󰑃  Youtube (zen)
+[42C│ └󰝚 󰑃  OneRepublic - Counting Stars (Paused)
+[42C
+
+> anvaya-frontend@1.0.0 dev
+> vite --host 0.0.0.0 --port 5173
+
+
+  VITE v5.4.21  ready in 305 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.16.210.218:5173/
+  ➜  Network: http://100.82.26.21:5173/
+6:54:27 PM [vite] hmr update /src/App.tsx
+6:54:56 PM [vite] hmr update /src/pages/DashboardPage.tsx
+6:56:03 PM [vite] hmr update /src/styles.css

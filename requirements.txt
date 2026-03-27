@@ -1,5 +1,7 @@
 fastapi
 uvicorn
+flask
+flask-cors
 supabase
 joblib
 pandas
@@ -7,5 +9,6 @@ numpy
 shap
 scikit-learn
 lightgbm
+xgboost
 python-dotenv
 tabulate

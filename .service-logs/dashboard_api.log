@@ -1,0 +1,199 @@
+
+             .',;::::;,'.
+         .';:cccccccccccc:;,.
+      .;cccccccccccccccccccccc;.
+    .:cccccccccccccccccccccccccc:.
+  .;ccccccccccccc;.:dddl:.;ccccccc;.
+ .:ccccccccccccc;OWMKOOXMWd;ccccccc:.
+.:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.
+,cccccccccccccc;MMM.;cc;;WW:;cccccccc,
+:cccccccccccccc;MMM.;cccccccccccccccc:
+:ccccccc;oxOOOo;MMM000k.;cccccccccccc:
+cccccc;0MMKxdd:;MMMkddc.;cccccccccccc;
+ccccc;XMO';cccc;MMM.;cccccccccccccccc'
+ccccc;MMo;ccccc;MMW.;ccccccccccccccc;
+ccccc;0MNc.ccc.xMMd;ccccccccccccccc;
+cccccc;dNMWXXXWM0:;cccccccccccccc:,
+cccccccc;.:odl:.;cccccccccccccc:,.
+ccccccccccccccccccccccccccccc:'.
+:ccccccccccccccccccccccc:;,..
+ ':cccccccccccccccc::;,.[1G[19A[42C
+[42C DISTRO 󰑃  Fedora Linux 43 (Workstation Edition) x86_64
+[42C│ ├ 󰑃  Linux 6.19.6-200.fc43.x86_64
+[42C│ ├ 󰑃  JaKooLit Version:
+[42C│ ├󰏖 󰑃  3648 (rpm), 36 (flatpak), 1 (brew), 1 (brew-cask)
+[42C│ └ 󰑃  bash 5.3.0
+[42C DE/WM 󰑃  Mutter (Wayland)
+[42C│ ├󰉼 󰑃  adw-gtk3-dark
+[42C│ ├󰀻 󰑃  Flat-Remix-Blue-Dark [GTK2/3/4]
+[42C│ ├ 󰑃  Bibata-Modern-Classic (24px)
+[42C│ └ 󰑃  xterm-256color
+[42C󰌢 SYSTEM 󰑃  750XFG (P10CFL)
+[42C│ ├󰻠 󰑃  13th Gen Intel(R) Core(TM) i5-1335U (12) @ 4.60 GHz
+[42C│ ├󰻑 󰑃  Iris Xe Graphics
+[42C│ ├󰍹 󰑃  1920x1080 @ 60Hz
+[42C│ ├󰾆 󰑃  10.16 GiB / 15.29 GiB (66%)
+[42C│ ├󰓡 󰑃  3.61 GiB / 8.00 GiB (45%)
+[42C│ ├󰅐 󰑃  1 day, 6 hours, 42 mins
+[42C│ └󰍹 󰑃  1920x1080 in 15", 60 Hz [Built-in]
+[42C AUDIO 󰑃  Raptor Lake-P/U/H cAVS Speaker
+[42C
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator LabelEncoder from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator IsotonicRegression from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator CalibratedClassifierCV from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+ * Serving Flask app 'dashboard_app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8001
+ * Running on http://172.16.210.218:8001
+Press CTRL+C to quit
+ * Restarting with stat
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator LabelEncoder from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator IsotonicRegression from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator CalibratedClassifierCV from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/beast/.local/lib/python3.14/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+ * Debugger is active!
+ * Debugger PIN: 435-297-195
+127.0.0.1 - - [27/Mar/2026 18:47:51] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:47:52] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:47:53] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:47:53] "GET /logs/risk?limit=2 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:19] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:19] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:19] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:19] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:29] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:48:31] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:53:47] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:53:47] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:53:50] "GET /logs/risk?limit=150&offset=0&risk_band=GREEN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:53:52] "GET /config/runtime HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:53:52] "GET /config/runtime HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:02] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:02] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:02] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:02] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:12] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:12] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:12] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:12] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:24] "GET /logs/risk?limit=150&offset=0&risk_band=RED HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:24] "GET /customers?limit=200&offset=0&risk_band=RED HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:35] "GET /logs/risk?limit=150&offset=0&risk_band=GREEN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:35] "GET /customers?limit=200&offset=0&risk_band=GREEN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:39] "GET /logs/risk?limit=150&offset=0&risk_band=YELLOW HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:39] "GET /customers?limit=200&offset=0&risk_band=YELLOW HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:47] "GET /logs/risk?limit=150&offset=0&risk_band=GREEN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:47] "GET /customers?limit=200&offset=0&risk_band=GREEN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:47] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:47] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:54:56] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:13] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:15] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:21] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:37] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:39] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:39] "GET /logs/risk?limit=150&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:39] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:39] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:41] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:41] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:42] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:42] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:45] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:45] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:46] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 18:55:46] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:18] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:18] "GET /model-health/timeline?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:19] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:19] "GET /model-health/summary HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /stats HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:21] "GET /customers?limit=200&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/stages/latest HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/runs?hours=24 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /logs/risk?limit=20&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 19:01:27] "GET /pipeline/stages/latest HTTP/1.1" 200 -
