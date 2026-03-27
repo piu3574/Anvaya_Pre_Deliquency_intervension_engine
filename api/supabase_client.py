@@ -1,15 +1,15 @@
-import os
-from typing import Dict, Any, List, Optional, Tuple
-from supabase import create_client, Client
-import datetime
+from dotenv import load_dotenv
 
-# Credentials (Hardcoded as requested)
-SUPABASE_URL = "https://fotkkamptuylqubvwyom.supabase.co".strip()
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdGtrYW1wdHV5bHF1YnZ3eW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDA3Nzc0NSwiZXhwIjoyMDg5NjUzNzQ1fQ.MOcNYq6s-WyjTY1T-_4QL9rlCsSgMHmE7uJYA2KS6Ig".strip()
+# Load .env file
+load_dotenv()
+
+# Credentials
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # Initialize client lazily or defensively
 supabase = None
-if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL.startswith("http"):
+if SUPABASE_URL and SUPABASE_KEY:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_raw_features(customer_id: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:

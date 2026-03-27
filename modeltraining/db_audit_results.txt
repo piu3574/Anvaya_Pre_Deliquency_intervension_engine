@@ -1,0 +1,19 @@
+----------------------------------------
+Table Name                | Status     | Rows      
+----------------------------------------
+customers                 | EXISTS     | 0         
+risk_scores               | EXISTS     | 0         
+risk_explanations         | EXISTS     | 0         
+customer_features         | EXISTS     | 4000      
+dashboard_customers       | EXISTS     | 29480     
+transactions              | EXISTS     | 0         
+accounts                  | MISSING/ERROR | 0         
+balances                  | MISSING/ERROR | 0         
+loans_raw                 | MISSING/ERROR | 0         
+balances_raw              | MISSING/ERROR | 0         
+accounts_raw              | MISSING/ERROR | 0         
+savings_raw               | MISSING/ERROR | 0         
+salary_raw                | MISSING/ERROR | 0         
+model_health              | MISSING/ERROR | 0         
+dashboard_data            | MISSING/ERROR | 0         
+----------------------------------------
