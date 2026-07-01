@@ -1,381 +1,151 @@
 # 🛡️ Anvaya — Pre-Delinquency Intervention Engine
 
-> **An AI-powered early-warning platform that predicts loan defaults *before* they happen, enabling financial institutions to proactively intervene and reduce credit risk.**
+**An AI-powered early-warning system that predicts loan defaults *before* they happen — giving lenders a window to intervene and save at-risk borrowers.**
 
-<p align="center">
-
-![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi)
-![Flask](https://img.shields.io/badge/Flask-black?style=for-the-badge&logo=flask)
-![XGBoost](https://img.shields.io/badge/XGBoost-ML-orange?style=for-the-badge)
-![LightGBM](https://img.shields.io/badge/LightGBM-Ensemble-success?style=for-the-badge)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-blue?style=for-the-badge&logo=postgresql)
-![TypeScript](https://img.shields.io/badge/Frontend-TypeScript-3178C6?style=for-the-badge&logo=typescript)
-
-</p>
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![XGBoost](https://img.shields.io/badge/Model-XGBoost%20%2B%20LightGBM-orange)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
+![Flask](https://img.shields.io/badge/Dashboard-Flask-black)
+![Status](https://img.shields.io/badge/Status-Hackathon%20Project-purple)
 
 ---
 
-# 📌 Overview
+## 💡 Inspiration
 
-Traditional credit risk systems identify borrowers only after they miss repayments. By then, lenders have already incurred financial risk.
-
-**Anvaya** is an AI-powered **Pre-Delinquency Intervention Engine** that predicts the **Probability of Default (PD)** before delinquency occurs, allowing banks and financial institutions to take proactive actions such as reminders, restructuring, or personalized interventions.
-
-Instead of reacting to defaults, Anvaya enables organizations to **prevent them.**
+Traditional credit risk systems flag borrowers only *after* they've already missed payments — by then, it's often too late to prevent the default. We built **Anvaya** to flip that model: score every borrower's **Probability of Default (PD)** in real time, and surface early-risk signals so lending teams can intervene *before* delinquency happens, not after.
 
 ---
 
-# 🎯 Key Features
+## 🚀 What It Does
 
-- 📊 Real-time Probability of Default Prediction
-- 🤖 Ensemble Machine Learning Model (XGBoost + LightGBM)
-- 🚦 Intelligent Risk Segmentation (Green / Orange / Red)
-- ⚡ FastAPI-based Prediction API
-- 📈 Interactive Dashboard (Flask + TypeScript)
-- 🧠 Explainable AI Predictions
-- ☁️ PostgreSQL + Supabase Integration
-- 📉 Portfolio Risk Analytics
-- 🔍 Data-driven Threshold Optimization
-- 📦 Modular & Scalable Architecture
+Anvaya is an end-to-end credit risk intelligence platform that:
+
+- 📊 **Scores every borrower** with a calibrated ML ensemble (XGBoost + LightGBM) to predict PD
+- 🚦 **Segments the portfolio** into GREEN / ORANGE / RED risk zones for instant triage
+- ⚡ **Serves real-time scores** via a FastAPI microservice for operational use
+- 📈 **Powers a live dashboard** (Flask backend + TypeScript frontend) so risk teams can monitor portfolio health at a glance
+- 🔍 **Explains every prediction** — no black-box scores, so risk analysts can see *why* a borrower was flagged
+- ☁️ **Syncs to Supabase** for persistent, queryable storage of scored data
 
 ---
 
-# 💡 Inspiration
+## 🧠 How We Built It
 
-Banks typically detect loan defaults after borrowers miss payments, leaving limited opportunity for preventive action.
+We approached this as a full-stack ML system, not just a model:
 
-Our vision was to shift from **reactive credit risk management** to **proactive intervention** by identifying high-risk borrowers before delinquency occurs.
-
-Anvaya empowers lenders to make informed decisions using predictive analytics and explainable machine learning.
-
----
-
-# 🚀 What Anvaya Does
-
-The platform provides an end-to-end credit risk intelligence system.
-
-✔ Predicts Probability of Default for every borrower
-
-✔ Classifies borrowers into:
-
-- 🟢 Green (Low Risk)
-- 🟡 Orange (Medium Risk)
-- 🔴 Red (High Risk)
-
-✔ Serves predictions through FastAPI
-
-✔ Displays portfolio insights on a live dashboard
-
-✔ Stores predictions in PostgreSQL (Supabase)
-
-✔ Provides explainable predictions for risk analysts
+1. **Data & Feature Engineering** — built a balanced 100k-row synthetic credit portfolio and engineered features that capture early behavioral risk signals (`feature_engineering/`)
+2. **Modeling** — trained a simple-averaging ensemble of XGBoost and LightGBM, tuned and calibrated against real default-rate distributions (`modeltraining/train_ensemble.py`)
+3. **Threshold Calibration** — instead of guessing risk cutoffs, we wrote a data-driven risk-spike analyzer (`optimize_thresholds.py`) to find the PD thresholds that actually separate low, medium, and high-risk borrowers
+4. **Serving Layer** — split the system into two services: a **FastAPI** engine for real-time scoring and a **Flask** backend for dashboard analytics, backed by **PostgreSQL/Supabase**
+5. **Explainability** — added tooling so every score comes with a "why," critical for any real-world credit decisioning tool
+6. **Frontend Dashboard** — a TypeScript dashboard to visualize risk segments, trends, and portfolio health in real time
 
 ---
 
-# 🏗️ System Architecture
+## 🚦 Risk Zones (v2.0.0)
 
-```
-                    +----------------------+
-                    | Borrower Information |
-                    +----------+-----------+
-                               |
-                               v
-                    Feature Engineering
-                               |
-                               v
-          +-------------------------------------+
-          | XGBoost + LightGBM Ensemble Model   |
-          +----------------+--------------------+
-                           |
-                    Probability of Default
-                           |
-        +------------------+------------------+
-        |                                     |
-        v                                     v
- FastAPI Prediction API             Flask Dashboard
-        |                                     |
-        +------------------+------------------+
-                           |
-                    PostgreSQL (Supabase)
-                           |
-                           v
-                 Portfolio Risk Analytics
-```
+| Zone | PD Threshold | Meaning |
+|------|-----------|---------|
+| 🟢 **GREEN** | PD < 15% | Low risk — safe zone |
+| 🟡 **ORANGE** | 15% ≤ PD < 50% | Monitor zone — early intervention candidate |
+| 🔴 **RED** | PD ≥ 50% | High risk — immediate action needed |
 
 ---
 
-# 📂 Project Structure
+## 🏗️ Architecture
 
 ```
 Anvaya_Pre_Deliquency_intervension_engine/
-
 ├── api/
-│   ├── main.py
-│   ├── dashboard_app.py
-│   └── supabase_client.py
+│   ├── main.py                 # FastAPI — real-time operational scoring
+│   ├── dashboard_app.py        # Flask — dashboard analytics & statistics
+│   └── supabase_client.py      # Supabase connection management
 │
 ├── modeltraining/
-│   ├── train_ensemble.py
-│   ├── gen_dashboard_data.py
-│   ├── optimize_thresholds.py
-│   └── diagnose_distribution.py
+│   ├── train_ensemble.py       # Ensemble training pipeline (XGBoost + LightGBM)
+│   ├── gen_dashboard_data.py   # Generates the scored "source of truth" dataset
+│   ├── optimize_thresholds.py  # Data-driven risk threshold calibration
+│   └── diagnose_distribution.py# Model calibration & drift auditor
 │
-├── dataset/
-│
-├── feature_engineering/
-│
-├── explainability/
-│
-├── frontend/
-│
-├── sql/
-│
-├── tests/
-│
-├── docs/
-│   ├── ANVAYA.pdf
-│   ├── ml_architecture_plan.md
-│   └── system_audit_report.md
-│
-├── requirements.txt
-│
-└── README.md
+├── dataset/                    # Balanced portfolio (100k rows)
+├── feature_engineering/        # Feature generation & transformation logic
+├── explainability/             # Model interpretability tooling
+├── frontend/                   # Risk dashboard UI (TypeScript)
+├── sql/                        # PostgreSQL schema definitions
+├── tests/                      # Test suite
+└── docs/                       # Architecture plan & system audit report
 ```
 
 ---
 
-# 🧠 Machine Learning Pipeline
+## 🛠️ Tech Stack
 
-1. Data Collection
-2. Feature Engineering
-3. Data Cleaning
-4. Ensemble Model Training
-5. Probability Calibration
-6. Threshold Optimization
-7. Explainability Generation
-8. FastAPI Model Serving
-9. Dashboard Analytics
-10. Continuous Monitoring
+**ML/Data:** XGBoost · LightGBM · scikit-learn · pandas
+**Backend:** FastAPI · Flask · Pydantic
+**Database:** PostgreSQL (Supabase)
+**Frontend:** TypeScript
+**Tooling:** pytest
 
 ---
 
-# 🚦 Risk Classification
-
-| Risk Zone | Probability of Default | Action |
-|------------|-----------------------|---------|
-| 🟢 Green | PD < 15% | Safe |
-| 🟡 Orange | 15% ≤ PD < 50% | Monitor |
-| 🔴 Red | PD ≥ 50% | Immediate Intervention |
-
----
-
-# ⚙️ Technology Stack
-
-## Machine Learning
-
-- XGBoost
-- LightGBM
-- Scikit-Learn
-- Pandas
-- NumPy
-
-## Backend
-
-- FastAPI
-- Flask
-- Pydantic
-
-## Database
-
-- PostgreSQL
-- Supabase
-
-## Frontend
-
-- TypeScript
-
-## Testing
-
-- Pytest
-
----
-
-# ⚙️ Installation
-
-## Clone Repository
+## ⚙️ Running It Locally
 
 ```bash
+# Clone
 git clone https://github.com/piu3574/Anvaya_Pre_Deliquency_intervension_engine.git
-
 cd Anvaya_Pre_Deliquency_intervension_engine
-```
 
----
-
-## Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
----
-
-## Start Prediction API
-
-```bash
+# Start the real-time scoring API
 uvicorn api.main:app --reload --port 8000
-```
 
----
-
-## Start Dashboard Backend
-
-```bash
+# Start the dashboard backend (separate terminal)
 python api/dashboard_app.py
+
+# Start the frontend (separate terminal)
+cd frontend && npm install && npm run dev
 ```
 
----
-
-## Start Frontend
-
-```bash
-cd frontend
-
-npm install
-
-npm run dev
-```
+Supabase credentials are required for persistence — see `supabase_integration_guide.md`.
 
 ---
 
-# 🌐 API
+## 🧗 Challenges We Ran Into
 
-### Predict Risk
-
-```
-POST /predict
-```
-
-Example Request
-
-```json
-{
-    "age":35,
-    "income":65000,
-    "loan_amount":250000
-}
-```
-
-Example Response
-
-```json
-{
-   "probability_default":0.28,
-   "risk_zone":"ORANGE",
-   "explanation":"High utilization and declining repayment behaviour"
-}
-```
+- **Calibration over accuracy** — a model that's 90% accurate but poorly calibrated is dangerous in credit risk. We built a dedicated distribution-diagnosis tool to make sure predicted PDs actually matched real-world default rates.
+- **Threshold selection** — rather than picking arbitrary cutoffs for GREEN/ORANGE/RED, we built a risk-spike analyzer to derive thresholds directly from the data.
+- **Explainability vs. speed** — balancing a fast, real-time FastAPI scoring path with a separate, richer analytics path for the dashboard.
 
 ---
 
-# 📈 Explainability
+## 🏆 Accomplishments We're Proud Of
 
-Unlike traditional black-box models, every prediction generated by Anvaya is accompanied by an explanation describing the key factors responsible for the assigned risk score.
-
-This enables transparency, regulatory compliance, and improved trust for financial institutions.
-
----
-
-# 📊 Dashboard
-
-The dashboard provides
-
-- Portfolio Overview
-- Risk Distribution
-- Green / Orange / Red Segmentation
-- Live Borrower Scores
-- Risk Trends
-- Portfolio Analytics
+- Built a full ML pipeline — from synthetic data generation to a calibrated ensemble model to a live-serving API — in hackathon time
+- Designed risk thresholds that are *data-derived*, not arbitrary guesses
+- Shipped both an operational scoring service **and** an analytics dashboard, not just a notebook
+- Added real explainability tooling instead of treating the model as a black box
 
 ---
 
-# 📄 Technical Documentation
+## 🔮 What's Next
 
-Complete project documentation is available here:
-
-## 📘 [ANVAYA Technical Documentation (PDF)](docs/ANVAYA.pdf)
-
-The documentation includes:
-
-- System Architecture
-- ML Pipeline
-- Feature Engineering
-- Model Design
-- Database Design
-- Workflow
-- Deployment
-- Technical Decisions
-- Future Scope
+- Automated model retraining pipeline as new data comes in
+- Alerting/notification system for RED-zone borrowers
+- Expanded explainability (SHAP-based per-feature breakdowns) surfaced directly in the dashboard
+- Support for real-world, non-synthetic credit bureau datasets
 
 ---
 
-# 🧗 Challenges
+## 📄 Docs
 
-- Building a well-calibrated Probability of Default model
-- Optimizing thresholds using real distribution patterns
-- Balancing explainability with prediction speed
-- Designing a scalable modular architecture
-- Integrating FastAPI, Flask and Supabase
+- [`docs/ml_architecture_plan.md`](./docs/ml_architecture_plan.md) — technical roadmap & model design
+- [`docs/system_audit_report.md`](./docs/system_audit_report.md) — system health check
+- [`supabase_integration_guide.md`](./supabase_integration_guide.md) — Supabase setup guide
 
 ---
 
-# 🏆 Achievements
+## 👥 Team
 
-- End-to-end ML pipeline
-- Ensemble learning architecture
-- Real-time prediction API
-- Explainable AI
-- Data-driven threshold optimization
-- Interactive analytics dashboard
-- Modular production-ready project structure
-
----
-
-# 🔮 Future Improvements
-
-- Automated Model Retraining
-- SHAP-based Explainability
-- Real Credit Bureau Data Integration
-- Email/SMS Risk Alerts
-- Docker Deployment
-- Kubernetes Support
-- CI/CD Pipeline
-- Cloud Deployment (AWS/Azure/GCP)
-
----
-
-# 📚 Documentation
-
-| File | Description |
-|------|-------------|
-| docs/ANVAYA.pdf | Complete Technical Documentation |
-| docs/ml_architecture_plan.md | ML Architecture |
-| docs/system_audit_report.md | System Audit |
-| supabase_integration_guide.md | Supabase Setup |
-
----
-
-# 👥 Team
-
-Built with ❤️ during a Hackathon by **Team Anvaya**
-
----
-
-# ⭐ Support
-
-If you found this project useful, consider giving it a ⭐ on GitHub!
-
-It motivates us to continue improving the project.
-
----
+Built during a hackathon by [Team Anvaya].
