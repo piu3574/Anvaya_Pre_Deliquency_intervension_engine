@@ -146,6 +146,9 @@ Supabase credentials are required for persistence — see `supabase_integration_
 
 ---
 
+## PPT
+[View Resume (PDF)](./MRUNAL_KHADKE.pdf)
+
 ## 👥 Team
 
 Built during a hackathon by [Team Anvaya].
